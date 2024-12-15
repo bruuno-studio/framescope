@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FrameScope - Video Analysis Tool</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #C5F82A;
+            --background: #1A1D1F;
+            --card-bg: #2F3336;
+            --border: #3F4245;
+            --text: #FCFCFC;
+            --text-secondary: #9A9FA5;
+        }
+
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .color-box {
+            width: 32px;
+            height: 32px;
+            display: inline-block;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .frame-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .frame-container:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        .frame-mode-btn {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .frame-mode-btn:hover {
+            background-color: var(--primary);
+            color: var(--background);
+        }
+
+        .frame-mode-btn.selected {
+            background-color: var(--primary) !important;
+            color: var(--background);
+            border-color: var(--primary);
+        }
+
+        .dropdown-button {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            width: 100%;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-button:hover {
+            border-color: var(--primary);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-top: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background-color: rgba(197, 248, 42, 0.1);
+            color: var(--primary);
+        }
+
+        .dropdown-item.selected {
+            background-color: rgba(197, 248, 42, 0.05);
+            color: var(--primary);
+        }
+
+        .selected-item {
+            background-color: var(--primary);
+            color: var(--background);
+            border-radius: 8px;
+            padding: 4px 12px;
+        }
+
+        .progress-bar {
+            background-color: var(--primary);
+        }
+
+        button[type="submit"] {
+            background-color: var(--primary);
+            color: var(--background);
+            font-weight: 600;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            border: 1px solid var(--primary);
+        }
+
+        button[type="submit"]:hover {
+            background-color: var(--background);
+            color: var(--primary);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(197, 248, 42, 0.15);
+        }
+
+        .tag-container {
+            max-height: 150px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .tag-container::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .tag-container::-webkit-scrollbar-track {
+            background: var(--card-bg);
+            border-radius: 2px;
+        }
+
+        .tag-container::-webkit-scrollbar-thumb {
+            background-color: var(--border);
+            border-radius: 2px;
+        }
+
+        .scene-tag {
+            color: var(--text-secondary);
+        }
+
+        .info-tooltip .tooltip-text {
+            visibility: hidden;
+            width: 320px;
+            background-color: var(--card-bg);
+            color: var(--text);
+            text-align: left;
+            border-radius: 12px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            right: -10px;
+            top: calc(100% + 10px);
+            opacity: 0;
+            transition: opacity 0.3s, visibility 0.3s;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .info-tooltip .tooltip-text strong {
+            color: var(--primary);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .info-tooltip .tooltip-text br {
+            margin-bottom: 4px;
+            content: "";
+            display: block;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary);
+        }
+
+        .text-primary {
+            color: var(--primary);
+        }
+
+        .text-label {
+            color: var(--text);
+            opacity: 0.9;
+        }
+
+        .text-value {
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .frame-image {
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            width: 100%;
+            border-radius: 8px;
+            max-height: 300px;
+        }
+        .video-preview {
+            max-width: 100%;
+            max-height: 200px;
+            margin: 0 auto;
+            border-radius: 8px;
+            display: none;
+        }
+        .info-tooltip {
+            position: relative;
+            display: inline-block;
+            cursor: help;
+        }
+        .dropdown-container {
+            position: relative;
+            width: 100%;
+        }
+        .selected-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+        .remove-item {
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .remove-item:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="dark:bg-gray-900 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <div class="flex items-center justify-center gap-3 mb-2">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="inline-block">
+                    <rect x="4" y="4" width="24" height="24" rx="6" fill="#1A1D1F" stroke="#C5F82A" stroke-width="2"/>
+                    <rect x="8" y="8" width="6" height="6" rx="2" fill="#C5F82A" opacity="0.9"/>
+                    <rect x="8" y="18" width="6" height="6" rx="2" fill="#C5F82A" opacity="0.7"/>
+                    <rect x="18" y="8" width="6" height="6" rx="2" fill="#C5F82A" opacity="0.5"/>
+                    <rect x="18" y="18" width="6" height="6" rx="2" fill="#C5F82A" opacity="0.3"/>
+                    <path d="M4 16H28" stroke="#C5F82A" stroke-width="1" stroke-dasharray="2 2"/>
+                </svg>
+                <h1 class="text-4xl font-bold text-gray-100">FrameScope</h1>
+            </div>
+            <p class="text-gray-400">Analyze colors, scenes and moods in videos</p>
+        </header>
+
+        <div class="max-w-xl mx-auto bg-gray-800 rounded-lg shadow-xl p-6 mb-8">
+            <form id="uploadForm" class="space-y-4">
+                <div class="border-2 border-dashed border-gray-600 rounded-lg p-6 text-center hover:border-primary transition-colors">
+                    <input type="file" id="videoInput" name="video" accept="video/*" class="hidden">
+                    <video id="videoPreview" class="video-preview mb-4" controls></video>
+                    <label for="videoInput" class="cursor-pointer">
+                        <div class="space-y-2">
+                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"/>
+                            </svg>
+                            <div class="text-gray-300">
+                                <span class="font-medium">Click to upload</span> or drag and drop
+                            </div>
+                            <p class="text-xs text-gray-500">MP4, AVI, MOV, or MKV</p>
+                        </div>
+                    </label>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-medium text-label">Frame Capture Mode</label>
+                            <div class="info-tooltip">
+                                <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="tooltip-text">
+                                    <strong>Frame Capture Modes</strong>
+                                    • Detailed (1-2s): Best for short videos<br>
+                                    • Balanced (3-5s): Good for most videos<br>
+                                    • Overview (8-10s): For long videos<br>
+                                    • Custom: Your choice (1-60s)<br>
+                                    <strong>Auto-Adjustment</strong>
+                                    • Under 1 min: User selected<br>
+                                    • 1-5 min: Min 3s<br>
+                                    • 5-15 min: Min 5s<br>
+                                    • 15-30 min: Min 10s<br>
+                                    • Over 30 min: Min 15s<br>
+                                    <strong>Note</strong>
+                                    Up to 100 frames analyzed
+                                </span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2">
+                            <button type="button" class="frame-mode-btn bg-gray-700 text-label py-2 px-3 rounded-lg text-sm transition-colors" data-mode="detailed">
+                                <div class="font-medium">Detailed</div>
+                                <div class="text-xs text-secondary">1-2s intervals</div>
+                            </button>
+                            <button type="button" class="frame-mode-btn bg-gray-700 text-label py-2 px-3 rounded-lg text-sm transition-colors" data-mode="balanced">
+                                <div class="font-medium">Balanced</div>
+                                <div class="text-xs text-secondary">3-5s intervals</div>
+                            </button>
+                            <button type="button" class="frame-mode-btn bg-gray-700 text-label py-2 px-3 rounded-lg text-sm transition-colors" data-mode="overview">
+                                <div class="font-medium">Overview</div>
+                                <div class="text-xs text-secondary">8-10s intervals</div>
+                            </button>
+                            <button type="button" class="frame-mode-btn bg-gray-700 text-label py-2 px-3 rounded-lg text-sm transition-colors" data-mode="custom">
+                                <div class="font-medium">Custom</div>
+                                <div class="text-xs text-secondary">Your choice</div>
+                            </button>
+                        </div>
+                        <div id="customIntervalContainer" class="hidden">
+                            <div class="flex items-center gap-2 mt-2">
+                                <input type="number" id="customInterval" min="1" max="60" value="5"
+                                       class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-gray-100 text-sm">
+                                <span class="text-gray-400 text-sm">seconds between frames</span>
+                            </div>
+                        </div>
+                        <input type="hidden" id="frameInterval" name="frame_interval" value="3">
+                    </div>
+                    <button type="submit" class="w-full py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Analyze Video
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter Controls -->
+        <div id="searchControls" class="max-w-6xl mx-auto mb-8 hidden">
+            <div class="bg-gray-800 rounded-lg shadow-xl p-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Scenes</label>
+                        <div class="dropdown-container">
+                            <button type="button" class="dropdown-button" id="sceneDropdownBtn">
+                                <span>Select Scenes</span>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div class="dropdown-content" id="sceneDropdown">
+                                <!-- Scenes will be added here -->
+                            </div>
+                            <div class="selected-items" id="selectedScenes"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Emotions</label>
+                        <div class="dropdown-container">
+                            <button type="button" class="dropdown-button" id="emotionDropdownBtn">
+                                <span>Select Emotions</span>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div class="dropdown-content" id="emotionDropdown">
+                                <!-- Emotions will be added here -->
+                            </div>
+                            <div class="selected-items" id="selectedEmotions"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Colors</label>
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3" id="colorPaletteContainer">
+                            <!-- Colors will be added here -->
+                        </div>
+                        <div class="selected-items mt-3" id="selectedColors"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progressContainer" class="max-w-xl mx-auto mb-8 hidden">
+            <div class="bg-gray-800 rounded-lg shadow-xl p-4">
+                <div class="flex justify-between text-sm text-gray-400 mb-2">
+                    <span id="progressText">Analyzing video...</span>
+                    <span id="progressCount"></span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-2.5">
+                    <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full progress-bar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        let allResults = [];
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData();
+            const videoFile = document.getElementById('videoInput').files[0];
+            const frameInterval = document.getElementById('frameInterval').value;
+            
+            if (!videoFile) {
+                alert('Please select a video file');
+                return;
+            }
+            
+            formData.append('video', videoFile);
+            formData.append('frame_interval', frameInterval);
+            document.getElementById('progressContainer').classList.remove('hidden');
+            document.getElementById('searchControls').classList.add('hidden');
+            document.getElementById('results').innerHTML = '';
+            
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'An error occurred during upload');
+                }
+
+                // Read the response as a stream of events
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const {value, done} = await reader.read();
+                    if (done) break;
+                    
+                    const text = decoder.decode(value);
+                    const lines = text.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.status === 'error') {
+                                    throw new Error(data.message);
+                                }
+                                
+                                if (data.status === 'processing') {
+                                    updateProgress(data.current, data.total);
+                                } else if (data.status === 'success') {
+                                    document.getElementById('progressContainer').classList.add('hidden');
+                                    document.getElementById('searchControls').classList.remove('hidden');
+                                    allResults = data.results;
+                                    displayResults(allResults);
+                                }
+                            } catch (e) {
+                                console.error('Error parsing event:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message || 'An error occurred during analysis');
+                document.getElementById('progressContainer').classList.add('hidden');
+            }
+        });
+
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressCount').textContent = `${current}/${total} frames`;
+        }
+
+        function displayResults(results) {
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+            updateColorPalette();
+            
+            // Skip first frame and start numbering from 1
+            results.slice(1).forEach((result, index) => {
+                const frameElement = document.createElement('div');
+                frameElement.className = 'frame-container p-4';
+                
+                // Create palette display with null check
+                const paletteHtml = (result.color_palette || [])
+                    .map(color => `<div class="color-box" style="background-color: ${color?.hex || '#000000'}" 
+                         title="Click to copy: ${color?.hex || 'Unknown'}" 
+                         data-color="${color?.hex || ''}" 
+                         onclick="copyToClipboard('${color?.hex || ''}')"
+                         data-percentage="${color?.percentage || 0}"></div>`)
+                    .join('');
+
+                // Fix image path by using the correct path from the server
+                const imagePath = result.frame_path.replace('static/', '/static/');
+                
+                // Create the complete frame HTML with null checks
+                frameElement.innerHTML = `
+                    <div class="mb-4">
+                        <img src="${imagePath}" class="frame-image" alt="Frame ${index + 1}" loading="lazy">
+                        <h3 class="text-lg font-semibold text-gray-200 mt-3 mb-2">Frame ${index + 1}</h3>
+                    </div>
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Color Palette</h4>
+                        <div class="flex flex-wrap gap-3">${paletteHtml}</div>
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="text-sm font-medium text-gray-400 mb-2">Scene Analysis</h4>
+                        <div class="tag-container">
+                            <div class="mb-3">
+                                <h5 class="text-xs font-medium text-blue-400 mb-1">Scenes</h5>
+                                <div class="space-y-1">${
+                                    Object.entries(result.scene_analysis || {})
+                                        .filter(([label]) => ['indoor', 'outdoor', 'day', 'night', 'urban', 'nature', 'vintage', 'modern', 'minimalist', 'busy', 'bright', 'dark', 'colorful', 'monochrome'].includes(label))
+                                        .filter(([, prob]) => prob > 0.05)
+                                        .sort(([,a], [,b]) => b - a)
+                                        .map(([label, prob]) => `
+                                            <div class="flex justify-between items-center py-1">
+                                                <span class="text-sm text-gray-400 scene-tag">${label}</span>
+                                                <span class="text-sm font-medium text-gray-300 ml-2">${(prob * 100).toFixed(1)}%</span>
+                                            </div>
+                                        `).join('')
+                                }</div>
+                            </div>
+                            <div>
+                                <h5 class="text-xs font-medium text-rose-400 mb-1">Emotions</h5>
+                                <div class="space-y-1">${
+                                    Object.entries(result.scene_analysis || {})
+                                        .filter(([label]) => ['happy', 'sad', 'dramatic', 'peaceful', 'warm', 'cold', 'action', 'calm', 'energetic', 'relaxed'].includes(label))
+                                        .filter(([, prob]) => prob > 0.05)
+                                        .sort(([,a], [,b]) => b - a)
+                                        .map(([label, prob]) => `
+                                            <div class="flex justify-between items-center py-1">
+                                                <span class="text-sm text-gray-400 scene-tag">${label}</span>
+                                                <span class="text-sm font-medium text-gray-300 ml-2">${(prob * 100).toFixed(1)}%</span>
+                                            </div>
+                                        `).join('')
+                                }</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                resultsContainer.appendChild(frameElement);
+            });
+        }
+
+        function filterResults() {
+            const selectedEmotions = Array.from(document.getElementById('selectedEmotions').children).map(item => item.getAttribute('data-value'));
+            const selectedScenes = Array.from(document.getElementById('selectedScenes').children).map(item => item.getAttribute('data-value'));
+            const selectedColors = Array.from(document.getElementById('selectedColors').children).map(item => item.getAttribute('data-value'));
+            
+            const filteredResults = allResults.filter((result, index) => {
+                if (index === 0) return false;
+
+                if (selectedEmotions.length === 0 && 
+                    selectedScenes.length === 0 && 
+                    selectedColors.length === 0) {
+                    return true;
+                }
+
+                const sceneAnalysis = result.scene_analysis || {};
+                
+                // Scene and emotion filters
+                if (selectedScenes.length > 0) {
+                    const matchesScenes = selectedScenes.some(scene => sceneAnalysis[scene] > 0.05);
+                    if (!matchesScenes) return false;
+                }
+                
+                if (selectedEmotions.length > 0) {
+                    const matchesEmotions = selectedEmotions.some(emotion => sceneAnalysis[emotion] > 0.05);
+                    if (!matchesEmotions) return false;
+                }
+                
+                // Color filter with similarity check
+                if (selectedColors.length > 0) {
+                    const matchesColors = selectedColors.some(selectedColor =>
+                        (result.color_palette || []).some(color =>
+                            color?.hex && areSimilarColors(selectedColor, color.hex)
+                        )
+                    );
+                    if (!matchesColors) return false;
+                }
+                
+                return true;
+            });
+            
+            displayResults(filteredResults);
+        }
+
+        // Setup dropdowns
+        const dropdownButtons = document.querySelectorAll('.dropdown-button');
+        dropdownButtons.forEach(button => {
+            const dropdownId = button.getAttribute('id').replace('Btn', '');
+            const dropdown = document.getElementById(dropdownId);
+            
+            if (button && dropdown) {
+                button.addEventListener('click', () => {
+                    dropdown.classList.toggle('show');
+                });
+                
+                document.addEventListener('click', (e) => {
+                    if (!button.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.classList.remove('show');
+                    }
+                });
+            }
+        });
+
+        // Frame mode selection
+        const frameModeBtns = document.querySelectorAll('.frame-mode-btn');
+        const customIntervalContainer = document.getElementById('customIntervalContainer');
+        const frameIntervalInput = document.getElementById('frameInterval');
+        const customIntervalInput = document.getElementById('customInterval');
+
+        function selectFrameMode(mode) {
+            frameModeBtns.forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.dataset.mode === mode) {
+                    btn.classList.add('selected');
+                }
+            });
+
+            // Show/hide custom interval input
+            if (mode === 'custom') {
+                customIntervalContainer.classList.remove('hidden');
+                frameIntervalInput.value = customIntervalInput.value;
+            } else {
+                customIntervalContainer.classList.add('hidden');
+                // Set frame interval based on mode
+                switch (mode) {
+                    case 'detailed':
+                        frameIntervalInput.value = 2;
+                        break;
+                    case 'balanced':
+                        frameIntervalInput.value = 4;
+                        break;
+                    case 'overview':
+                        frameIntervalInput.value = 8;
+                        break;
+                }
+            }
+        }
+
+        frameModeBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectFrameMode(btn.dataset.mode);
+            });
+        });
+
+        customIntervalInput.addEventListener('input', () => {
+            let value = parseInt(customIntervalInput.value) || 1;
+            value = Math.max(1, Math.min(60, value));
+            customIntervalInput.value = value;
+            frameIntervalInput.value = value;
+        });
+
+        // Select default mode
+        selectFrameMode('balanced');
+
+        // Video preview and frame mode handling
+        document.getElementById('videoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const videoPreview = document.getElementById('videoPreview');
+                videoPreview.style.display = 'block';
+                const videoUrl = URL.createObjectURL(file);
+                videoPreview.src = videoUrl;
+
+                // Update frame mode based on video duration
+                videoPreview.onloadedmetadata = function() {
+                    const duration = videoPreview.duration;
+                    
+                    // Auto-select appropriate mode based on duration
+                    if (duration > 1800) { // > 30 minutes
+                        selectFrameMode('overview');
+                    } else if (duration > 600) { // 10-30 minutes
+                        selectFrameMode('overview');
+                    } else if (duration > 300) { // 5-10 minutes
+                        selectFrameMode('balanced');
+                    } else { // < 5 minutes
+                        selectFrameMode('detailed');
+                    }
+                };
+            }
+        });
+
+        // Setup initial scene and emotion data
+        const scenes = ['indoor', 'outdoor', 'day', 'night', 'urban', 'nature', 'vintage', 'modern', 'minimalist', 'busy'];
+        const emotions = ['happy', 'sad', 'dramatic', 'peaceful', 'warm', 'cold'];
+
+        // Populate scene dropdown
+        const sceneDropdown = document.getElementById('sceneDropdown');
+        scenes.forEach(scene => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.setAttribute('data-value', scene);
+            item.textContent = scene;
+            item.addEventListener('click', () => toggleSelection(item, document.getElementById('selectedScenes'), 'scene'));
+            sceneDropdown.appendChild(item);
+        });
+
+        // Populate emotion dropdown
+        const emotionDropdown = document.getElementById('emotionDropdown');
+        emotions.forEach(emotion => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.setAttribute('data-value', emotion);
+            item.textContent = emotion;
+            item.addEventListener('click', () => toggleSelection(item, document.getElementById('selectedEmotions'), 'emotion'));
+            emotionDropdown.appendChild(item);
+        });
+
+        // Selection management
+        function toggleSelection(item, selectedContainer, type) {
+            const value = item.getAttribute('data-value');
+            const selectedItems = selectedContainer.querySelectorAll('.selected-item');
+            const exists = Array.from(selectedItems).some(i => i.getAttribute('data-value') === value);
+            
+            if (!exists) {
+                const selectedItem = document.createElement('div');
+                selectedItem.className = 'selected-item';
+                selectedItem.setAttribute('data-value', value);
+                selectedItem.innerHTML = `
+                    ${type === 'color' ? `<div class="color-box" style="background-color: ${value}"></div>` : ''}
+                    ${type === 'color' ? '' : `<span>${value}</span>`}
+                    <span class="remove-item">×</span>
+                `;
+                selectedContainer.appendChild(selectedItem);
+                
+                selectedItem.querySelector('.remove-item').addEventListener('click', () => {
+                    selectedItem.remove();
+                    item.classList.remove('selected');
+                    filterResults();
+                });
+                
+                item.classList.add('selected');
+            }
+            
+            filterResults();
+        }
+
+        // Add color utility functions
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        function getColorDistance(color1, color2) {
+            const rgb1 = hexToRgb(color1);
+            const rgb2 = hexToRgb(color2);
+            
+            if (!rgb1 || !rgb2) return 1000;
+            
+            return Math.sqrt(
+                Math.pow(rgb1.r - rgb2.r, 2) +
+                Math.pow(rgb1.g - rgb2.g, 2) +
+                Math.pow(rgb1.b - rgb2.b, 2)
+            );
+        }
+
+        function areSimilarColors(color1, color2, threshold = 30) {
+            return getColorDistance(color1, color2) < threshold;
+        }
+
+        // Update color palette functionality
+        function updateColorPalette() {
+            const uniqueColors = new Set();
+            const colorFrequency = new Map();
+            
+            // First pass: collect all colors and their frequencies
+            allResults.forEach(result => {
+                if (result.color_palette && Array.isArray(result.color_palette)) {
+                    result.color_palette.forEach(color => {
+                        if (color && color.hex) {
+                            const freq = colorFrequency.get(color.hex) || 0;
+                            colorFrequency.set(color.hex, freq + 1);
+                        }
+                    });
+                }
+            });
+
+            // Second pass: filter similar colors, keep the most frequent one
+            const processedColors = new Set();
+            colorFrequency.forEach((freq, color) => {
+                if (!processedColors.has(color)) {
+                    let shouldAdd = true;
+                    for (const existingColor of uniqueColors) {
+                        if (areSimilarColors(color, existingColor)) {
+                            const existingFreq = colorFrequency.get(existingColor);
+                            if (freq > existingFreq) {
+                                uniqueColors.delete(existingColor);
+                                uniqueColors.add(color);
+                            }
+                            shouldAdd = false;
+                            break;
+                        }
+                    }
+                    if (shouldAdd) {
+                        uniqueColors.add(color);
+                    }
+                    processedColors.add(color);
+                }
+            });
+            
+            const container = document.getElementById('colorPaletteContainer');
+            container.innerHTML = '';
+            
+            Array.from(uniqueColors).forEach(color => {
+                const colorItem = document.createElement('div');
+                colorItem.className = 'cursor-pointer flex justify-center items-center';
+                colorItem.setAttribute('data-value', color);
+                colorItem.innerHTML = `
+                    <div class="color-box" style="background-color: ${color}" title="${color}"></div>
+                `;
+                colorItem.addEventListener('click', () => toggleSelection(colorItem, document.getElementById('selectedColors'), 'color'));
+                container.appendChild(colorItem);
+            });
+        }
+
+        // Update the copyToClipboard function
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                
+                // Create and show temporary tooltip
+                const tooltip = document.createElement('div');
+                tooltip.textContent = 'Color code copied!';
+                tooltip.style.cssText = `
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background-color: var(--card-bg);
+                    color: var(--primary);
+                    padding: 12px 24px;
+                    border-radius: 12px;
+                    border: 1px solid var(--border);
+                    font-weight: 500;
+                    font-size: 14px;
+                    z-index: 1000;
+                    opacity: 0;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                `;
+
+                // Add checkmark icon
+                tooltip.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Color code copied!
+                `;
+                
+                document.body.appendChild(tooltip);
+                
+                // Fade in with slight upward movement
+                setTimeout(() => {
+                    tooltip.style.opacity = '1';
+                    tooltip.style.transform = 'translate(-50%, -60%)';
+                }, 0);
+                
+                // Fade out with downward movement
+                setTimeout(() => {
+                    tooltip.style.opacity = '0';
+                    tooltip.style.transform = 'translate(-50%, -40%)';
+                    setTimeout(() => tooltip.remove(), 300);
+                }, 1500);
+            } catch (err) {
+                console.error('Failed to copy color code:', err);
+            }
+        }
+    </script>
+</body>
+</html> 
