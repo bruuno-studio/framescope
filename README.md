@@ -5,6 +5,12 @@
     <h3>Analyze colors, scenes and moods in videos</h3>
 </div>
 
+
+<div align="center">
+    <img src="https://github.com/user-attachments/assets/2d70dd60-441f-41c4-bb17-80ee80d26f8b" alt="framescope">
+</div>
+
+
 FrameScope is a powerful web application that analyzes videos to extract color palettes, detect scenes, and identify moods from individual frames. It provides an intuitive interface for video analysis and filtering results based on various criteria.
 
 ## Features
